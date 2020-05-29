@@ -197,7 +197,7 @@ const MESSAGE_NEWSTYLE = /^\[([0-9/]{10} [0-9:]{8} UTC)\] \((\d{10,})\/(\d{10,})
                         'avatar_url': "", 
                         'mod': false
                     },
-                    'attachments': {},
+                    'attachments': [],
                     'channel': channel
                 };
                 newDoc.messages.push(msg)
