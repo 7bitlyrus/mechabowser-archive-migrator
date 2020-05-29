@@ -4,8 +4,10 @@ const config = require("./config.json");
 const dbClient = new MongoClient(config.mongo, {useUnifiedTopology: true});
 
 // CONSTANTS
-const HEADER_OLDSTYLE = /^# Message archive for \"#.+\" \(\d{10,}\) in guild ".+" \((\d{10,})\)\n{1,2}# Format:\n\[date \+ time] Member ID\/Message ID\/Username - Message content\n----------------$/;
+const HEADER_OLDSTYLE = /^# Message archive for \"#(.+)\" \((\d{10,})\) in guild ".+" \((\d{10,})\)\n{1,2}# Format:\n\[date \+ time] Member ID\/Message ID\/Username - Message content\n----------------$/;
 const HEADER_NEWSTYLE = /^# Message archive for guild ".+" \((\d{10,})\)\nIncluded channels: .+\n# Format:\n\[date \+ time] Member ID\/Message ID\/Channel\/Username - Message content\n----------------$/;
+const MESSAGE_OLDSTYLE = /^\[([0-9/]{10} [0-9:]{8} UTC)\] \((\d{10,})\/(\d{10,})\/(.+)#(.{4})\): (.+)$/;
+const MESSAGE_NEWSTYLE = /^\[([0-9/]{10} [0-9:]{8} UTC)\] \((\d{10,})\/(\d{10,})\/#(.+)\/(.+)#(.{4})\): (.+$)/;
 
 (async function() {
     // Connect to database and set exposed collections
@@ -54,7 +56,8 @@ const HEADER_NEWSTYLE = /^# Message archive for guild ".+" \((\d{10,})\)\nInclud
 
             // Check if archive already exists
             logsCursor = collections.modmailLogs.find({"_id" : id});
-            if(logsCursor) {
+            logDoc = await logsCursor.next();
+            if(logDoc) {
                 console.log(`${id} already exists in the logs collection.`);
                 continue;
             }
@@ -68,24 +71,31 @@ const HEADER_NEWSTYLE = /^# Message archive for guild ".+" \((\d{10,})\)\nInclud
                 if(line === "----------------") break;
                 else header += '\n';
             };
-            var messagesStartAt = i + 1;
+            var messagesStartAt = Number(i) + 1;
 
             // Test Header
             const matchOld = header.match(HEADER_OLDSTYLE);
             const matchNew = header.match(HEADER_NEWSTYLE);
-            var style, guildid;
+            var style, guildid, channel;
             if(matchOld) {
                 style = "old";
-                guildid = matchOld[1];
+                channel = {
+                    name: matchOld[1],
+                    id: matchOld[2],
+                }
+                guildid = matchOld[3];
             } else if(matchNew) {
+                channel = {
+                    name: "unknown",
+                    id: "0",
+                }
                 style = "new";
                 guildid = matchNew[1];
             }
             else throw new Error(`Document ${id || "[Unknown]"} does not have any known header.`);
 
             // We need to do some weird string manip to convert '2012-11-04T14:51:06.157Z' to '2012-11-04 14:51:06.157'
-            const createdAt = new Date(doc.timestamp * 1000) // sec * 1000 = ms
-                .toISOString().replace(/T/, ' ').replace(/Z/, '');
+            const createdAt = new Date(doc.timestamp * 1000).toISOString().replace(/T/, ' ').replace(/Z/, '');
             const closedAt = new Date().toISOString().replace(/T/, ' ').replace(/Z/, ''); 
             
             // Initialize document w/o messages
@@ -122,11 +132,81 @@ const HEADER_NEWSTYLE = /^# Message archive for guild ".+" \((\d{10,})\)\nInclud
                 },
                 "messages": []
             };
-            // TODO: DO MAGIC
+            
+            // Default message values
+            var time = new Date(0);
+            var user = {
+                id: 0,
+                name: "Unknown",
+                discriminator: "0000"
+            };
+            var text = "*unknown text*";
+            var messageid = 0;
 
-            console.log(JSON.stringify(document))
+            // For each actual message
+            for (i = messagesStartAt; i < lines.length; i++) {
+                line = lines[i];
 
-            // console.log(doc);
+                if(style == 'old') {
+                    const match = line.match(MESSAGE_OLDSTYLE);
+                    if(match) {
+                        time = match[1];
+                        memberid = match[2];
+                        messageid = match[3];
+                        user = {
+                            id: match[2],
+                            name: match[4],
+                            discrim: match[5]
+                        };
+                        text = match[6];
+                    } else { // if not match assume part of last message, but add as new message
+                        text = line;
+                    }
+                } else if(style == 'new') {
+                    const match = line.match(MESSAGE_NEWSTYLE);
+                    if(match) {
+                        time = match[1];
+                        memberid = match[2];
+                        messageid = match[3];
+                        channel = {
+                            name: match[4],
+                            id: "0"
+                        };
+                        user = {
+                            id: match[2],
+                            name: match[5],
+                            discrim: match[6]
+                        };
+                        text = match[7];
+                    } else text = line;
+                }
+
+                // more timestamp fun
+                timestamp = new Date(time).toISOString().replace(/T/, ' ').replace(/Z/, '');
+
+                msg = {
+                    'timestamp': timestamp,
+                    'message_id': messageid,
+                    'content': text,
+                    'type': 'thread_message',
+                    'author': {
+                        'id': user.id,
+                        'name': user.name,
+                        'discriminator': user.discrim,
+                        'avatar_url': "", // TODO
+                        'mod': false
+                    },
+                    'attachments': {},
+                    'channel': channel
+                };
+                newDoc.messages.push(msg)
+            }
+
+            // console.log(JSON.stringify(newDoc))
+
+            await collections.modmailLogs.insertOne(newDoc);
+
+            console.log(`Converted ${id}.`);
         } catch (err) {
             console.log("Failed to convert document:", err.stack);
         }
