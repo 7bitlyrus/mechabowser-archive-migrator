@@ -1,5 +1,5 @@
 {
     "mongo": "mongodb://localhost:27017/",
     "botid": "123456789000000000",
-    "picture": "https:///placehold.it/512x512"
+    "avatar": "https://placehold.it/512x512"
 }
