@@ -2,24 +2,54 @@ const MongoClient = require("mongodb").MongoClient;
 
 const config = require("./config.json");
 
-(async function() {
-    const dbClient = new MongoClient(config.mongo, {useUnifiedTopology: true});
+const dbClient = new MongoClient(config.mongo, {useUnifiedTopology: true});
 
-    // Connect to database
+(async function() {
+    // --- Connect to database and set exposed collections
+    let collections = {};
     try {
         await dbClient.connect();
-        const db = {
-            bowser: dbClient.db('bowser'),
-            modmail: dbClient.db('modmail')
+
+        const bowser = dbClient.db('bowser');
+        const modmail =  dbClient.db('modmail');
+        
+        collections = {
+            bowserArchive: bowser.collection('archive'),
+            modmailLogs: modmail.collection('logs')
         };
-        console.log("Connected to database.")
+
+        console.log("Connected to database.");
     } catch (err) {
-        console.log("Failed to connect to database:", err.stack);
+        console.log("Could not connect to database:", err.stack);
         process.exit(1);
     }
 
-    
-    // TODO: MAGIC
+    // Setup archive cursor and test/report on collections
+    let archiveCursor;
+    try {
+        archiveCursor = collections.bowserArchive.find({});
+        logsCursor = collections.modmailLogs.find({});
 
-    dbClient.close();
+
+        archiveCount = await archiveCursor.count();
+        logsCount = await logsCursor.count();
+
+        console.log(`Bowser archive collection reports ${archiveCount} items.`);
+        console.log(`Modmail logs collection reports ${logsCount} items.`);
+    } catch (err) {
+        console.log("Failed to check collections:", err.stack);
+        process.exit(1);
+    }
+    
+    for await(const doc of archiveCursor) {
+        try {
+            console.log(`Converting ${doc._id}...`)
+            
+            // TODO: Magic
+            console.log(doc)
+        } catch (err) {
+            console.log("Failed to convert document:", err.stack);
+            process.exit(1);
+        }
+    }
 })();
