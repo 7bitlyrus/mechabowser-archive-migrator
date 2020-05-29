@@ -1,0 +1,22 @@
+{
+  "name": "mechabowser-archive-migrator",
+  "version": "0.1.0",
+  "description": "Archive migration tool MechaBowser",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/7bitlyrus/mechabowser-archive-migrator.git"
+  },
+  "author": "Ian Murray",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/7bitlyrus/mechabowser-archive-migrator/issues"
+  },
+  "homepage": "https://github.com/7bitlyrus/mechabowser-archive-migrator#readme",
+  "dependencies": {
+    "mongodb": "^3.5.8"
+  }
+}
