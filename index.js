@@ -147,6 +147,7 @@ const MESSAGE_NEWSTYLE = /^\[([0-9/]{10} [0-9:]{8} UTC)\] \((\d{10,})\/(\d{10,})
             for (i = messagesStartAt; i < lines.length; i++) {
                 line = lines[i];
 
+                // Regex parasing
                 if(style == 'old') {
                     const match = line.match(MESSAGE_OLDSTYLE);
                     if(match) {
@@ -193,7 +194,7 @@ const MESSAGE_NEWSTYLE = /^\[([0-9/]{10} [0-9:]{8} UTC)\] \((\d{10,})\/(\d{10,})
                         'id': user.id,
                         'name': user.name,
                         'discriminator': user.discrim,
-                        'avatar_url': "", // TODO
+                        'avatar_url': "", 
                         'mod': false
                     },
                     'attachments': {},
@@ -201,8 +202,6 @@ const MESSAGE_NEWSTYLE = /^\[([0-9/]{10} [0-9:]{8} UTC)\] \((\d{10,})\/(\d{10,})
                 };
                 newDoc.messages.push(msg)
             }
-
-            // console.log(JSON.stringify(newDoc))
 
             await collections.modmailLogs.insertOne(newDoc);
 
