@@ -1,0 +1,45 @@
+db.insert_one({
+    '_id': _id, [ID]
+    'key': _id, [ID]
+    'open': True, [TICK = FALSE]
+    'created_at': str(message.created_at), [TIMESTAMP]
+    'closed_at': None, [MIGRATE DATE]
+    'channel_id': str(channel.id), [0]
+    'guild_id': str(channel.guild.id), 
+    'bot_id': str(self.bot.user.id), [CONFIG BOT ID]
+    'recipient': {
+        'id': str(recipient.id), [0]
+        'name': recipient.name, ["Migrated Archive"]
+        'discriminator': recipient.discriminator, [0]
+        'avatar_url': str(recipient.avatar_url_as(static_format='png', size=1024)), [CONFIG picture]
+        'mod': False
+    },
+    'creator': {
+        'id': str(creator.id), [0]
+        'name': creator.name, [NULL STRING]
+        'discriminator': creator.discriminator, [0]
+        'avatar_url': str(creator.avatar_url_as(static_format='png', size=1024)), [NULL STRING]
+        'mod': False [FALSE]
+    },
+    'closer': None, [name = NULL STRING/id = 0/mod = false]
+    'messages': [
+        {
+            'timestamp': str(message.created_at),
+            'message_id': str(message.id),
+            'content': message.content,
+            'type': 'mention' if is_mention else 'thread_message',
+            'author': {
+                'id': str(message.author.id),
+                'name': message.author.name,
+                'discriminator': message.author.discriminator,
+                'avatar_url': str(message.author.avatar_url_as(static_format='png', size=1024)),
+                'mod': False
+            },
+            'attachments': attachments,
+            'channel': {
+                'id': str(message.channel.id),
+                'name': message.channel.name
+            } if is_mention else {}
+        }
+    ]
+})
